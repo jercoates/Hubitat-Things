@@ -1,0 +1,18 @@
+{
+  "packageName": "Aeotec HEM Gen2 Dual Clamp",
+  "author": "Jeremy (jercoates)",
+  "version": "1.1.0",
+  "minimumHEVersion": "2.3.0",
+  "dateReleased": "2026-11-22",
+  "documentationLink": "https://github.com/jercoates/aeotec-hem-gen2-dual",
+  "releaseNotes": "1.1.0 - daily/monthly kWh rollups; Reset Energy clears rollups; clears stale scheduled jobs on save.",
+  "drivers": [
+    {
+      "id": "8c4042c2-9d8c-438f-afa8-15b6ad224a55",
+      "name": "Aeotec HEM Gen2 Dual Clamp",
+      "namespace": "jercoates",
+      "location": "https://raw.githubusercontent.com/jercoates/aeotec-hem-gen2-dual/main/drivers/aeotec-hem-gen2-dual.groovy",
+      "required": true
+    }
+  ]
+}
