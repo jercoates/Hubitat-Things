@@ -165,5 +165,6 @@ A standard command the remote has no code for logs a warning and does nothing.
 - Remotes learned in the LinknLink phone app live in LinknLink's cloud and can't be imported. Use the database, teach the buttons, or paste codes.
 
 ## Changelog
+- **1.1.1** (2026-11-25): the app never deletes sensor devices by itself. Unticking a sensor in Choose sensors only stops managing it; to delete one, use Remove device on its device page.
 - **1.1.0** (2026-11-25): eMotion Pro support with a Model picker per sensor; `model` and `parts` attributes. Save and connect / Save sensors buttons, so setup goes forward without pressing Done and coming back in. Unique MQTT client id per hub. Zones drawn after the sensor connected now show up.
 - **1.0.0** (2026-11-24): initial version. App, MQTT Listener, eMotion Ultra and IR Remote.

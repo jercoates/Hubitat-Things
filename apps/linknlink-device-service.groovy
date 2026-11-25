@@ -22,13 +22,14 @@
  *  1.1.0 - 2026-11-25 - "Save and connect" button for the broker and "Save sensors" button, so setup
  *                       goes forward without pressing Done and coming back in. Model picker per sensor
  *                       (eMotion Ultra / eMotion Pro); only models with IR are offered as IR blasters.
+ *  1.1.1 - 2026-11-25 - The app never deletes sensor devices by itself (unticking only stops managing it).
  *  1.0.0 - 2026-11-24 - Initial version.
  */
 
 import groovy.transform.Field
 import java.util.concurrent.ConcurrentHashMap
 
-def appVersion() { "1.1.0" }
+def appVersion() { "1.1.1" }
 
 @Field static final String NS = "jercoates"
 @Field static final String IRDB_RAW = "https://raw.githubusercontent.com/probonopd/irdb/master/codes/"
@@ -154,7 +155,8 @@ def devicesPage() {
                 input "model_${mac}", "enum", title: "Model of ${opts[mac] ?: mac}", options: MODELS.keySet() as List, defaultValue: DEFAULT_MODEL, required: true, submitOnChange: true
                 if (MODELS[modelOf(mac)]?.ir) input "ip_${mac}", "text", title: "IP address of ${opts[mac] ?: mac} (needed for IR)", required: false, submitOnChange: true
             }
-            input "saveSensors", "button", title: "Save sensors (creates or removes their devices now)"
+            input "saveSensors", "button", title: "Save sensors (creates their devices now)"
+            paragraph "<small>Unticking a sensor never deletes its device. To delete one, open it from Devices and use Remove device.</small>"
             if (state.sensorsMsg) paragraph "<i>${state.sensorsMsg}</i>"
         }
     }
@@ -922,12 +924,8 @@ private void syncUltras() {
         String ip = settings["ip_${mac}"]?.trim()
         if (ip) cd.updateSetting("deviceIp", [type: "text", value: ip])
     }
-    getUltras().each { cd ->
-        if (!want.contains(cd.getDataValue("mac"))) {
-            log.info "LinknLink: removing ${cd.displayName}"
-            try { deleteChildDevice(cd.deviceNetworkId) } catch (e) { log.error "LinknLink: couldn't remove ${cd.displayName}: ${e.message}" }
-        }
-    }
+    // Never delete devices here: a lost or empty selection (page glitch, update) must not wipe sensors that
+    // rules, dashboards and remotes use. To delete one, use Remove device on its device page.
 }
 
 /* ===================== Called by the Listener / devices ===================== */
