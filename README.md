@@ -21,7 +21,7 @@ Driver for the Aeotec / Aeon Labs Home Energy Meter **Gen2 (DSB28)**, 2-clamp ve
 ## Install
 **Manual:** Drivers Code → New Driver → paste `drivers/aeotec-hem-gen2-dual.groovy` → Save. On the meter's device page set Type to **Aeotec HEM Gen2 Dual Clamp** → Save Device → Save Preferences → Configure.
 
-**Hubitat Package Manager:** Install → From a URL → paste the raw URL of `packageManifest.json`.
+**Hubitat Package Manager:** Install → From a URL → `https://raw.githubusercontent.com/jercoates/Hubitat-Things/main/packageManifest-aeotec.json`
 
 Recommended: Device Info → **Event history size** ≈ 400 so a full year of daily totals is kept.
 
@@ -84,7 +84,9 @@ Structure follows Albert Mulder's InvisOutlet Device Service ([almulder/Hubitat-
 - The Ultra and Hubitat must be able to reach each other on the network: MQTT to the broker, and UDP port 80 from Hubitat to the Ultra for IR.
 
 ## Setup
-1. Add the 3 drivers (Drivers Code) and the app (Apps Code).
+1. Install the code, either way:
+   - **Hubitat Package Manager:** Install → From a URL → `https://raw.githubusercontent.com/jercoates/Hubitat-Things/main/packageManifest-linknlink.json`
+   - **Manual:** add the 3 drivers (Drivers Code) and the app (Apps Code).
 2. Apps → Add User App → **LinknLink Device Service**.
 3. Enter the broker IP, port, username and password, then press **Done** and open the app again. The status line should say connected.
 4. **Choose sensors:** tick your Ultra(s) and type each one's IP address (needed for IR). Done. A device named after the Ultra is created.

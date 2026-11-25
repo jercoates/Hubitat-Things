@@ -6,7 +6,7 @@ Owner has no formal programming background and verifies behaviorally on real har
 
 ## Files
 - `drivers/aeotec-hem-gen2-dual.groovy` — the driver (single file, no libraries)
-- `packageManifest.json` — Hubitat Package Manager manifest (URLs assume repo `jercoates/aeotec-hem-gen2-dual`, branch `main`)
+- `packageManifest-aeotec.json` — Hubitat Package Manager manifest for this driver only (repo `jercoates/Hubitat-Things`, branch `main`)
 - `README.md` — user-facing install/usage
 
 ## Status
@@ -46,5 +46,5 @@ Owner has no formal programming background and verifies behaviorally on real har
 - Reset Energy should zero meter counters and Today/ThisMonth; next report should NOT produce a huge delta.
 
 ## Conventions
-- Namespace `jercoates`. Bump the version in the driver header AND `packageManifest.json` together; note changes in README changelog.
+- Namespace `jercoates`. Bump the version in the driver header AND `packageManifest-aeotec.json` together; note changes in README changelog.
 - Keep it a single file. No external libraries.

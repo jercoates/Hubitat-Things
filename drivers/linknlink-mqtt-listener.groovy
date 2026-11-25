@@ -109,7 +109,10 @@ def connect() {
     if (!state.broker) { log.warn "${device.displayName}: no broker set yet - open the LinknLink Device Service app"; return }
     String pw = null
     try { pw = parent?.getMqttPassword() } catch (ignored) { }
-    String clientId = "hubitat_linknlink_${device.id}"
+    // device ids are only unique on one hub, so add a random part made once per install - two hubs on the
+    // same broker with the same client id would keep kicking each other off
+    if (!state.clientTag) state.clientTag = Long.toHexString(new Random().nextLong() & 0xffffffffL)
+    String clientId = "hubitat_linknlink_${device.id}_${state.clientTag}"
     try {
         logDebug "connecting to ${state.broker} as ${clientId}"
         interfaces.mqtt.connect(state.broker, clientId, state.username ?: null, pw ?: null, cleanSession: true, keepAlive: 60)

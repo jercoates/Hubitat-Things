@@ -1,0 +1,43 @@
+{
+  "packageName": "LinknLink eMotion Ultra + IR Remotes",
+  "author": "Jeremy Coates (jercoates)",
+  "version": "1.0.0",
+  "minimumHEVersion": "2.3.0",
+  "dateReleased": "2026-11-25",
+  "documentationLink": "https://github.com/jercoates/Hubitat-Things#linknlink-emotion-ultra--ir-remotes",
+  "releaseNotes": "1.0.0 - Initial release: eMotion Ultra sensors over MQTT (presence, 4 zones, counts, temperature, humidity, lux, settings) and full IR remotes through the Ultra's IR blaster, every button a command.",
+  "apps": [
+    {
+      "id": "8a561f51-aa1a-4a0a-9bfd-e7e8d3d6b456",
+      "name": "LinknLink Device Service",
+      "namespace": "jercoates",
+      "location": "https://raw.githubusercontent.com/jercoates/Hubitat-Things/main/apps/linknlink-device-service.groovy",
+      "required": true,
+      "oauth": false,
+      "primary": true
+    }
+  ],
+  "drivers": [
+    {
+      "id": "224f3266-84fc-40bc-89d0-4d11cc868aad",
+      "name": "LinknLink MQTT Listener",
+      "namespace": "jercoates",
+      "location": "https://raw.githubusercontent.com/jercoates/Hubitat-Things/main/drivers/linknlink-mqtt-listener.groovy",
+      "required": true
+    },
+    {
+      "id": "070d1f91-4b01-4d43-a565-206f334ad32f",
+      "name": "LinknLink eMotion Ultra",
+      "namespace": "jercoates",
+      "location": "https://raw.githubusercontent.com/jercoates/Hubitat-Things/main/drivers/linknlink-emotion-ultra.groovy",
+      "required": true
+    },
+    {
+      "id": "4a2d6067-5788-43f7-b350-fb0401238083",
+      "name": "LinknLink IR Remote",
+      "namespace": "jercoates",
+      "location": "https://raw.githubusercontent.com/jercoates/Hubitat-Things/main/drivers/linknlink-ir-remote.groovy",
+      "required": true
+    }
+  ]
+}

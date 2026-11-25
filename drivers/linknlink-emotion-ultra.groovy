@@ -159,7 +159,7 @@ def webValue(resp, data) {
     if (j?.value == null) return
     String entity = data.entity
     if (entity.startsWith("zone")) {
-        if (entity != "zone0" && device.currentValue(entity) == "not configured") return
+        if (entity != "zone0" && device.currentValue(entity) == "not configured" && j.value != true) return
         handleEntity(entity, "status", "{\"pir_detected\":${j.value == true ? 1 : 0}}")
     } else {
         try { handleEntity(entity, "status", "${(j.value as BigDecimal).intValue()}") } catch (ignored) { logDebug "web value ${entity}: not a number" }
@@ -192,6 +192,15 @@ def mqttUpdate(String topic, String payload) {
     noteUnhandled(topic, payload)
 }
 
+// A zone marked "not configured" that reports someone in it (or a count > 0) does exist - the Ultra
+// only announces which zones are drawn when it connects, so zones drawn later would otherwise stay hidden.
+private void zoneSeen(String zn) {
+    Map avail = (state.zoneAvail ?: [:]) as Map
+    avail[zn] = true
+    state.zoneAvail = avail
+    if (device.currentValue(zn) == "not configured") setAttr(zn, "inactive", "${device.displayName} ${zn} is configured")
+}
+
 private void handleEntity(String entity, String kind, String payload) {
     if (kind == "available") {
         // zone1-4 report "offline" while that zone isn't drawn in the LinknLink app
@@ -214,13 +223,20 @@ private void handleEntity(String entity, String kind, String payload) {
             setAttr("presence", pir ? "present" : "not present", "${device.displayName} is ${pir ? 'occupied' : 'empty'}")
             break
         case ~/zone[1-4]/:
-            if (((state.zoneAvail ?: [:]) as Map)[entity] == false) break     // not drawn: ignore its idle reports
             Integer zp = jsonInt(payload, "pir_detected")
-            if (zp != null) setAttr(entity, zp ? "active" : "inactive", "${device.displayName} ${entity} is ${zp ? 'active' : 'inactive'}")
+            if (zp == null) break
+            if (((state.zoneAvail ?: [:]) as Map)[entity] == false) {
+                if (!zp) break              // not drawn: ignore its idle reports
+                zoneSeen(entity)            // someone is in it, so it was drawn after the Ultra last announced its zones
+            }
+            setAttr(entity, zp ? "active" : "inactive", "${device.displayName} ${entity} is ${zp ? 'active' : 'inactive'}")
             break
         case "AllArea": setNum("targetCount", payload); break
         case "SetZone": setNum("fencedCount", payload); break
-        case ~/SepZone_[1-4]/: setNum("zone${entity[-1]}Count", payload); break
+        case ~/SepZone_[1-4]/:
+            setNum("zone${entity[-1]}Count", payload)
+            if (payload?.trim()?.isInteger() && (payload.trim() as int) > 0 && ((state.zoneAvail ?: [:]) as Map)["zone${entity[-1]}"] == false) zoneSeen("zone${entity[-1]}")
+            break
         case "temp":
             Integer t = jsonInt(payload, "envtemp")
             if (t == null) break
