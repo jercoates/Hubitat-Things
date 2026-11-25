@@ -5,7 +5,7 @@ Hubitat Elevation drivers and apps by Jeremy Coates (namespace `jercoates`).
 | What | Files | Status |
 |---|---|---|
 | [Aeotec HEM Gen2 Dual Clamp](#aeotec-hem-gen2-dual-clamp) | `drivers/aeotec-hem-gen2-dual.groovy` | Per-leg readings verified on hardware; rollups (1.1.0) not yet run |
-| [LinknLink eMotion Ultra + IR remotes](#linknlink-emotion-ultra--ir-remotes) | `apps/linknlink-device-service.groovy`, `drivers/linknlink-mqtt-listener.groovy`, `drivers/linknlink-emotion-ultra.groovy`, `drivers/linknlink-ir-remote.groovy` | Tested on a C-5 test hub; not yet on a production hub |
+| [LinknLink eMotion Ultra / Pro + IR remotes](#linknlink-emotion-ultra--ir-remotes) | `apps/linknlink-device-service.groovy`, `drivers/linknlink-mqtt-listener.groovy`, `drivers/linknlink-emotion-ultra.groovy`, `drivers/linknlink-ir-remote.groovy` | Tested on a C-5 test hub; not yet on a production hub |
 
 ## Installing code (any of these)
 
@@ -61,7 +61,7 @@ Recommended: Device Info → **Event history size** ≈ 400 so a full year of da
 
 # LinknLink eMotion Ultra + IR remotes
 
-Connects the **LinknLink eMotion Ultra** (60 GHz mmWave presence sensor with temperature, humidity, light and an IR blaster) to Hubitat:
+Connects the **LinknLink eMotion Ultra** (60 GHz mmWave presence sensor with temperature, humidity, light and an IR blaster) and the **eMotion Pro** (24 GHz, same features; temperature/humidity with LinknLink's add-on) to Hubitat:
 
 - **Sensors over MQTT:** presence, 4 zones, people counts, temperature, humidity, lux, Wi-Fi signal, plus the Ultra's settings.
 - **Full IR remotes:** each remote (TV, soundbar, fan, AC…) becomes its own Hubitat device. **Every button is a command**, usable from dashboards, Rule Machine and webCoRE.
@@ -88,9 +88,11 @@ Structure follows Albert Mulder's InvisOutlet Device Service ([almulder/Hubitat-
    - **Hubitat Package Manager:** Install → From a URL → `https://raw.githubusercontent.com/jercoates/Hubitat-Things/main/packageManifest-linknlink.json`
    - **Manual:** add the 3 drivers (Drivers Code) and the app (Apps Code).
 2. Apps → Add User App → **LinknLink Device Service**.
-3. Enter the broker IP, port, username and password, then press **Done** and open the app again. The status line should say connected.
-4. **Choose sensors:** tick your Ultra(s) and type each one's IP address (needed for IR). Done. A device named after the Ultra is created.
-   - Ultras are found from their MQTT messages. If none is listed, wait a minute or restart the Ultra so it announces itself.
+3. Enter the broker IP, port, username and password and press **Save and connect**. The Listener line under it should say connected.
+   - Using Hubitat's built-in broker? The password is on Integrations → MQTT Export Integration.
+4. **Choose sensors:** tick your sensor(s), pick each one's **Model** (eMotion Ultra or eMotion Pro), type its IP address (needed for IR), and press **Save sensors**. A device is created for each one.
+   - Ultras are found from their MQTT messages. If none is listed, wait a minute and open Choose sensors again, or restart the Ultra so it announces itself.
+   - Give each Ultra a fixed IP (a DHCP reservation in your router) so the IP you typed stays right.
 
 ## eMotion Ultra device
 
@@ -101,6 +103,8 @@ Structure follows Albert Mulder's InvisOutlet Device Service ([almulder/Hubitat-
 | `targetCount`, `fencedCount`, `zone1Count`…`zone4Count` | People counts |
 | `temperature`, `humidity`, `illuminance`, `rssi` | Environment and Wi-Fi signal |
 | `healthStatus` | online / offline (no messages for a while) |
+| `model` | The model picked in the app |
+| `parts` | The sensors this unit has actually reported, e.g. `radar, light, temperature/humidity` |
 | `irStatus`, `lastIr`, `learnStatus` | IR blaster status |
 | `xMin`…`zMax`, `reverseXAxis`, thresholds, intervals | The Ultra's current settings |
 
@@ -153,6 +157,7 @@ A standard command the remote has no code for logs a warning and does nothing.
 - Debug and raw-message logging turn themselves off after 30 minutes.
 
 ## Known limits
+- The eMotion Pro is supported from LinknLink's published specs but hasn't been tested on a real Pro yet. The battery eMotion Air (Bluetooth/Zigbee) isn't covered.
 - RC5/RC6 codes always use toggle bit 0. A few devices ignore a repeated press because of it; teach that button from the real remote instead.
 - The Test page shows at most 6 code groups per brand.
 - Flipper-IRDB browsing uses GitHub's API, which allows 60 requests an hour without login. Browsing many brands quickly can hit that limit for an hour.
@@ -160,4 +165,5 @@ A standard command the remote has no code for logs a warning and does nothing.
 - Remotes learned in the LinknLink phone app live in LinknLink's cloud and can't be imported. Use the database, teach the buttons, or paste codes.
 
 ## Changelog
+- **1.1.0** (2026-11-25): eMotion Pro support with a Model picker per sensor; `model` and `parts` attributes. Save and connect / Save sensors buttons, so setup goes forward without pressing Done and coming back in. Unique MQTT client id per hub. Zones drawn after the sensor connected now show up.
 - **1.0.0** (2026-11-24): initial version. App, MQTT Listener, eMotion Ultra and IR Remote.

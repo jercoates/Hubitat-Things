@@ -6,6 +6,9 @@
  *  catalog of the LinknLink units it hears about (from their Home Assistant discovery messages),
  *  and hands every LinknLink message to the app, which routes it to the right device.
  *
+ *  1.0.1 - 2026-11-25 - MQTT client id includes a random per-install part, so two hubs on one broker
+ *          don't knock each other off. Backoff only resets after 5 min connected; other publishers
+ *          under home/ are ignored.
  *  1.0.0 - 2026-11-24 - Initial version, modelled on Albert Mulder's InvisOutlet / YoLink listeners
  *          (reconnect backoff, watchdog, debug logging that turns itself off).
  */
@@ -14,7 +17,7 @@ import groovy.json.JsonSlurper
 import groovy.transform.Field
 import java.util.concurrent.ConcurrentHashMap
 
-def driverVersion() { "1.0.0" }
+def driverVersion() { "1.0.1" }
 
 @Field static ConcurrentHashMap<String, Long> lastMsgTs = new ConcurrentHashMap<String, Long>()
 // The Ultra re-sends every value every 20-40 s. Only changed values go to the app (each call wakes

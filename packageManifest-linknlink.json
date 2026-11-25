@@ -1,11 +1,11 @@
 {
-  "packageName": "LinknLink eMotion Ultra + IR Remotes",
+  "packageName": "LinknLink eMotion Ultra/Pro + IR Remotes",
   "author": "Jeremy Coates (jercoates)",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "minimumHEVersion": "2.3.0",
   "dateReleased": "2026-11-25",
   "documentationLink": "https://github.com/jercoates/Hubitat-Things#linknlink-emotion-ultra--ir-remotes",
-  "releaseNotes": "1.0.0 - Initial release: eMotion Ultra sensors over MQTT (presence, 4 zones, counts, temperature, humidity, lux, settings) and full IR remotes through the Ultra's IR blaster, every button a command.",
+  "releaseNotes": "1.1.0 - eMotion Pro support (Model picker per sensor), model/parts attributes, Save and connect / Save sensors buttons so setup goes forward without Done-and-reopen, unique MQTT client id per hub, zones drawn later now show up. 1.0.0 - Initial release.",
   "apps": [
     {
       "id": "8a561f51-aa1a-4a0a-9bfd-e7e8d3d6b456",

@@ -19,13 +19,16 @@
  *
  *  Structure follows Albert Mulder's InvisOutlet Device Service (almulder/Hubitat-Drivers).
  *
+ *  1.1.0 - 2026-11-25 - "Save and connect" button for the broker and "Save sensors" button, so setup
+ *                       goes forward without pressing Done and coming back in. Model picker per sensor
+ *                       (eMotion Ultra / eMotion Pro); only models with IR are offered as IR blasters.
  *  1.0.0 - 2026-11-24 - Initial version.
  */
 
 import groovy.transform.Field
 import java.util.concurrent.ConcurrentHashMap
 
-def appVersion() { "1.0.0" }
+def appVersion() { "1.1.0" }
 
 @Field static final String NS = "jercoates"
 @Field static final String IRDB_RAW = "https://raw.githubusercontent.com/probonopd/irdb/master/codes/"
@@ -37,6 +40,12 @@ def appVersion() { "1.0.0" }
 @Field static final int MAX_GROUPS = 6
 
 // Standard button keys (these are the IR Remote driver's commands), in display order
+// Wi-Fi eMotion models this app supports and what they can do (LinknLink's comparison table).
+// Temperature/humidity aren't listed: they show up by themselves when the unit sends them (built in on
+// the Ultra, an add-on on the Pro). The battery eMotion Air (Bluetooth/Zigbee) is a different device.
+@Field static final Map MODELS = ["eMotion Ultra": [ir: true], "eMotion Pro": [ir: true]]
+@Field static final String DEFAULT_MODEL = "eMotion Ultra"
+
 @Field static final List STD_ORDER = ["power", "on", "off", "volumeUp", "volumeDown", "mute", "channelUp", "channelDown",
     "input", "up", "down", "left", "right", "ok", "back", "exit", "home", "menu", "info", "guide",
     "play", "pause", "playPause", "stop", "fastForward", "rewind", "next", "previous", "record",
@@ -104,19 +113,21 @@ def mainPage() {
         section("<b>MQTT broker</b>") {
             paragraph "The broker your LinknLink devices publish to (LinknLink app: device → ⋯ → MQTT Connection). " +
                       "Hubitat's built-in broker works: Integrations → MQTT Export Integration."
-            input "brokerIp", "text", title: "Broker IP", required: true, defaultValue: "192.168.1.233"
-            input "brokerPort", "number", title: "Port", required: true, defaultValue: 1883
-            input "brokerUser", "text", title: "Username", required: false, defaultValue: "hubitat"
-            input "brokerPassword", "password", title: "Password", required: false
+            input "brokerIp", "text", title: "Broker IP", required: true, defaultValue: "192.168.1.233", submitOnChange: true
+            input "brokerPort", "number", title: "Port", required: true, defaultValue: 1883, submitOnChange: true
+            input "brokerUser", "text", title: "Username", required: false, defaultValue: "hubitat", submitOnChange: true
+            input "brokerPassword", "password", title: "Password", required: false, submitOnChange: true
+            input "saveBroker", "button", title: "Save and connect"
+            if (state.brokerMsg) paragraph "<i>${state.brokerMsg}</i>"
             def l = getListener()
-            paragraph "Listener: ${l ? (l.currentValue('connectionStatus') ?: 'starting') : 'not created yet (press Done once)'}" +
+            paragraph "Listener: ${l ? (l.currentValue('connectionStatus') ?: 'starting') : 'not created yet - press Save and connect'}" +
                       (l ? " · LinknLink units seen: ${l.currentValue('unitsSeen') ?: 0}" : "")
         }
         section("<b>eMotion sensors</b>") {
             href "devicesPage", title: "Choose sensors", description: "${getUltras().size()} added"
         }
         section("<b>IR remotes</b>") {
-            if (!getUltras()) paragraph "Add an eMotion sensor first - its IR blaster sends the remote's codes."
+            if (!getBlasters()) paragraph "Add an eMotion sensor with IR first (Ultra or Pro) - its IR blaster sends the remote's codes."
             else href "arWhatPage", title: "➕ Add a remote", description: "4 short steps", params: [fresh: "${now()}".toString()]
             getRemotes().each { cd ->
                 href "arButtonsPage", title: "${cd.displayName} (${cd.currentValue('numberOfButtons') ?: 0} buttons)",
@@ -140,9 +151,11 @@ def devicesPage() {
             if (!opts) paragraph "No LinknLink units heard yet. Check the broker settings, that the units' MQTT Connection says Connected, then come back in a minute."
             input "selectedUnits", "enum", title: "Units to add as Hubitat devices", options: opts, multiple: true, required: false, submitOnChange: true
             (settings.selectedUnits ?: []).each { mac ->
-                input "ip_${mac}", "text", title: "IP address of ${opts[mac] ?: mac} (needed for IR)", required: false, submitOnChange: true
+                input "model_${mac}", "enum", title: "Model of ${opts[mac] ?: mac}", options: MODELS.keySet() as List, defaultValue: DEFAULT_MODEL, required: true, submitOnChange: true
+                if (MODELS[modelOf(mac)]?.ir) input "ip_${mac}", "text", title: "IP address of ${opts[mac] ?: mac} (needed for IR)", required: false, submitOnChange: true
             }
-            paragraph "Devices are created or removed when you press Done on the main page."
+            input "saveSensors", "button", title: "Save sensors (creates or removes their devices now)"
+            if (state.sensorsMsg) paragraph "<i>${state.sensorsMsg}</i>"
         }
     }
 }
@@ -153,7 +166,7 @@ def arWhatPage(Map params = null) {
     if (params?.fresh && state.arToken != params.fresh) { resetWizard(); state.arToken = params.fresh }
     cascadeChoices()
     Map ultras = [:]
-    getUltras().each { ultras[it.deviceNetworkId] = it.displayName }
+    getBlasters().each { ultras[it.deviceNetworkId] = it.displayName }
     if (settings.arBlaster && !ultras.containsKey(settings.arBlaster)) app.removeSetting("arBlaster")    // that eMotion was deleted
     if (ultras.size() == 1 && !settings.arBlaster) app.updateSetting("arBlaster", [type: "enum", value: (ultras.keySet() as List)[0]])
     boolean own = settings.arOwnOnly == true
@@ -294,6 +307,16 @@ def arDonePage() {
 /* ============================ Button handling ============================ */
 
 def appButtonHandler(String btn) {
+    if (btn == "saveBroker") {
+        if (!settings.brokerIp) { state.brokerMsg = "Enter the broker IP first."; return }
+        try { initialize() } catch (e) { log.error "LinknLink: save failed: ${e.message}" }
+        state.brokerMsg = getListener() ? "Saved - connecting now. Your sensors appear under Choose sensors within about a minute."                                         : "Couldn't create the MQTT Listener - press Done once to finish installing the app, then open it again."
+        return
+    }
+    if (btn == "saveSensors") {
+        try { initialize(); state.sensorsMsg = "Saved - ${getUltras().size()} sensor device(s)." } catch (e) { state.sensorsMsg = "Couldn't save: ${e.message}" }
+        return
+    }
     if (btn.startsWith("testgrp_")) {
         try {
             Map g = codeGroups()[btn.substring(8) as int]
@@ -317,7 +340,7 @@ def appButtonHandler(String btn) {
         if (!n) { state.arLearnMsg = "Type the button's name first."; return }
         def ultra = getChildDevice(settings.arBlaster)
         if (!ultra) { state.arLearnMsg = "No eMotion chosen on page 1."; return }
-        if (ultra.learnIr() != true) { state.remove("arLearnFor"); state.arLearnMsg = "Couldn't start learning - set the eMotion's IP address in its device Preferences."; return }
+        if (ultra.learnIr() != true) { state.remove("arLearnFor"); state.arLearnMsg = "Couldn't start learning - check the eMotion's IP address (Choose sensors) and that its model has IR."; return }
         state.arLearnFor = n
         state.arLearnMsg = "Listening for '${n}' for 30 seconds - press that button on the remote now, aimed at the eMotion."
     } else if (btn == "paste_add") {
@@ -402,7 +425,7 @@ private void loadForRecheck(String dni) {
     resetWizard()
     state.arRecheck = dni
     String blaster = cd.getBlasterDni()
-    if (!blaster || !getChildDevice(blaster)) blaster = getUltras()[0]?.deviceNetworkId
+    if (!blaster || !getChildDevice(blaster)) blaster = getBlasters()[0]?.deviceNetworkId
     if (blaster) app.updateSetting("arBlaster", [type: "enum", value: blaster])
     state.arOwn = cd.getButtonCodes() ?: [:]
 }
@@ -875,6 +898,9 @@ private def ensureListener() {
 }
 
 List getUltras()  { getChildDevices().findAll { it.typeName == "LinknLink eMotion Ultra" } }
+// eMotion devices whose model has an IR blaster
+List getBlasters() { getUltras().findAll { MODELS[it.getDataValue("model") ?: DEFAULT_MODEL]?.ir } }
+private String modelOf(String mac) { MODELS.containsKey(settings["model_${mac}"]) ? settings["model_${mac}"] : DEFAULT_MODEL }
 List getRemotes() { getChildDevices().findAll { it.typeName == "LinknLink IR Remote" } }
 
 private void syncUltras() {
@@ -890,6 +916,9 @@ private void syncUltras() {
             } catch (e) { log.error "LinknLink: couldn't create the device for ${mac}: ${e.message}"; return }
         }
         cd.updateDataValue("mac", mac)
+        String model = modelOf(mac)
+        cd.updateDataValue("model", model)
+        try { cd.setModel(model, MODELS[model]?.ir == true) } catch (ignored) { }
         String ip = settings["ip_${mac}"]?.trim()
         if (ip) cd.updateSetting("deviceIp", [type: "text", value: ip])
     }

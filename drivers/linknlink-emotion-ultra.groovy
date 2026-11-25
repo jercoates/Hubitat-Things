@@ -13,6 +13,9 @@
  *  Ultra must be UNLOCKED in the LinknLink app (device settings -> lock off) for IR to work.
  *  sendIrCode / learnIr are here for testing; normal use is through the remote devices.
  *
+ *  1.1.0 - 2026-11-25 - Works for the eMotion Pro too (model set in the app). "model" and "parts"
+ *          attributes (parts = the sensors this unit has actually reported). IR commands do nothing on a
+ *          model without IR. Zones drawn after the unit connected now show up when someone is in them.
  *  1.0.0 - 2026-11-24 - Initial version (split out of the single-file v1 driver). Topic map, payloads
  *          and IR protocol verified on a live eMotion Ultra 2 (radar firmware V3.18.2).
  */
@@ -24,7 +27,7 @@ import javax.crypto.spec.SecretKeySpec
 import javax.crypto.spec.IvParameterSpec
 import hubitat.helper.HexUtils
 
-def driverVersion() { "1.0.0" }
+def driverVersion() { "1.1.0" }
 
 @Field static ConcurrentHashMap<String, Long> lastUltraMsg = new ConcurrentHashMap<String, Long>()
 @Field static ConcurrentHashMap<String, List> irQueue = new ConcurrentHashMap<String, List>()
@@ -98,6 +101,8 @@ metadata {
         attribute "luxInterval", "number"
         attribute "tempHumidityInterval", "number"
         attribute "lastUnhandled", "string"
+        attribute "model", "string"
+        attribute "parts", "string"             // sensors this unit has reported: radar, light, temperature/humidity
 
         command "sendIrCode", [[name: "hex*", type: "STRING", description: "LinknLink/Broadlink IR code in hex (starts with 26)"]]
         command "learnIr"
@@ -281,7 +286,25 @@ private void noteModule(String entity, String id) {
                  (entity in ["temp", "humidty", "humidity"]) ? "sht" : (entity == "lux") ? "opt" : null
     if (!mod) return
     Map mods = (state.modules ?: [:]) as Map
-    if (mods[mod] != id) { mods[mod] = id; state.modules = mods }
+    if (mods[mod] != id) {
+        mods[mod] = id; state.modules = mods
+        Map names = [radar: "radar", opt: "light", sht: "temperature/humidity"]
+        setAttr("parts", ["radar", "opt", "sht"].findAll { mods.containsKey(it) }.collect { names[it] }.join(", "))
+    }
+}
+
+// Called by the app with the model picked for this unit
+def setModel(String model, Boolean ir = true) {
+    state.hasIr = (ir != false)
+    setAttr("model", model)
+}
+
+private boolean irAllowed() {
+    if (state.hasIr == false) {
+        if (gate("${device.id}|noIrModel".toString(), IR_ERROR_LOG_MS)) log.warn "${device.displayName}: this model (${device.currentValue('model')}) has no IR blaster"
+        return false
+    }
+    return true
 }
 
 // Unknown data (e.g. target coordinates if that upload is switched on, ~1/s) is recorded once a day
@@ -335,6 +358,7 @@ private void publishConfig(String key, String value) {
 
 // Called by the app / remote devices. label is only for logging.
 def sendIrCode(String hex, String label = null) {
+    if (!irAllowed()) return
     String h = hex?.replaceAll("[^0-9A-Fa-f]", "")
     if (!h || h.length() % 2 || !h.toLowerCase().startsWith("26")) { log.error "${device.displayName}: not a valid IR code"; return }
     queueIr([op: "send", hex: h, label: label ?: "IR code"])
@@ -343,6 +367,7 @@ def sendIrCode(String hex, String label = null) {
 // Puts the Ultra in learning mode for LEARN_SECONDS. The result goes to learnStatus and to the app
 // (parent.irLearned). Point the remote at the Ultra and press the button once.
 def learnIr() {
+    if (!irAllowed()) return false
     if (!settings.deviceIp) { setAttr("learnStatus", "no IP address set in Preferences"); return false }
     state.learnUntil = now() + LEARN_SECONDS * 1000L
     setAttr("learnStatus", "waiting")
